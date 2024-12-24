@@ -2,7 +2,7 @@ from contextlib import asynccontextmanager
 from requests import get
 from bs4 import BeautifulSoup
 import openrouteservice
-from dotenv import load_dotenv, dotenv_values
+from dotenv import dotenv_values
 import sqlite3
 from telegram import Bot
 from telegram.error import RetryAfter
@@ -29,6 +29,10 @@ if not dotenv_values()["DOMAIN"]:
     raise Exception("Missing domain, usually: https://www.jobs.nhs.uk [include protocol]")
 if not dotenv_values()["ORIGIN_ADDRESS"]:
     raise Exception("Missing origin address, this can be any address in the UK")
+if not dotenv_values()["FILTER_OUT_TITLE"]:
+    raise Exception("Missing filters, if no filter is needed, leave a blank space")
+
+
 
 
 
@@ -42,6 +46,7 @@ conn = sqlite3.connect('jobs.db')
 cursor = conn.cursor()
 
 keywords = dotenv_values()["KEYWORDS"].split(",")
+filter_out_titles = dotenv_values()["FILTER_OUT_TITLE"].split(",")
 pay_ranges = dotenv_values()["PAY_RANGES"].split(",")
 domain = dotenv_values()["DOMAIN"]
 
@@ -65,7 +70,9 @@ def search_query():
                 links = soup.find_all("a", {"data-test" : "search-result-job-title"})
                 
                 for job in links:
-                    if does_record_exist(job["href"]): continue
+                    if does_record_exist(job["href"]) or \
+                       any(map(lambda x: x.strip().lower() in job.get_text().lower(), filter_out_titles)):
+                           continue
                     parse_job(job["href"])
 
                 try:
