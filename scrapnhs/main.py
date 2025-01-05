@@ -169,10 +169,15 @@ def insert_record(path, salary, title, address, distance):
 
 async def telegram_send_message(message):
     telegram_bot = Bot(token=dotenv_values()["TELEGRAM_TOKEN"])
-    try:
-        await telegram_bot.send_message(chat_id=channel_id, text=message)
-    except RetryAfter:
-        await asyncio.sleep(60)
+    tries = 0
+    while tries <= 3:
+        try:
+            await telegram_bot.send_message(chat_id=channel_id, text=message)
+            return
+        except RetryAfter:
+            tries += 1
+            await asyncio.sleep(60)
+    raise Exception("Attempted 3 times, cannot send a telegram message")
 
 def parse_job(path):
     path = path.split("?", 1)[0] # rem params
